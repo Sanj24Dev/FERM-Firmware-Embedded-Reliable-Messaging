@@ -86,10 +86,10 @@ void setup() {
   ferm_set_flag(&flags, PACKET_FLAG_START);
   ferm_set_flag(&flags, PACKET_FLAG_FRAGMENT);
   ferm_packet_init(&packet, flags, ULP_UART, payload1, data_len);
-  size_t max_size = HEADER_SIZE + packet.header.data_len + 1; 
-  uint8_t *buffer = (uint8_t *)malloc(data_len + HEADER_SIZE);     
+  size_t max_size = sizeof(ferm_header_t) + packet.header.data_len + 1; 
+  uint8_t *buffer = (uint8_t *)malloc(data_len + 3);     
   size_t num_bytes = ferm_serialize_packet(&packet, buffer, max_size); 
-  Serial.write(buffer, data_len + HEADER_SIZE);
+  Serial.write(buffer, data_len + 3);
   Serial.flush();
   free(buffer);
   
@@ -123,10 +123,10 @@ void setup() {
   ferm_set_flag(&flags, PACKET_FLAG_FRAGMENT);
   ferm_set_flag(&flags, PACKET_FLAG_FINAL);
   ferm_packet_init(&packet, flags, ULP_UART, payload2, data_len);
-  max_size = HEADER_SIZE + packet.header.data_len + 1; 
-  buffer = (uint8_t *)malloc(data_len + HEADER_SIZE);      
+  max_size = sizeof(ferm_header_t) + packet.header.data_len + 1; 
+  buffer = (uint8_t *)malloc(data_len + 3);      
   num_bytes = ferm_serialize_packet(&packet, buffer, max_size); 
-  Serial.write(buffer, data_len + HEADER_SIZE);
+  Serial.write(buffer, data_len + 3);
   Serial.flush();
   free(buffer);
   index = 0;
