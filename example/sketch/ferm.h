@@ -12,6 +12,8 @@ extern "C"
 #define CRC8_POLY 0x07
 #define CRC8_INIT 0x00
 
+#define HEADER_SIZE 3 // Size of the header in bytes (1 byte control + 1 byte length + 1 byte checksum)
+
 
     typedef enum
     {
@@ -84,6 +86,7 @@ extern "C"
     void ferm_set_flag(uint8_t* flag, ferm_packet_flag to_set);
 
     size_t ferm_serialize_packet(const ferm_packet *packet, uint8_t *buffer, size_t buffer_len);
+    int ferm_check_ack(const uint8_t *bufferRcvd, size_t index);
 
 #ifdef __cplusplus
 }

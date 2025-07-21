@@ -15,8 +15,12 @@ void ferm_packet_init(ferm_packet *packet, uint8_t flags, upper_layer_protocol u
     // packet->header.reserved = 0; // Reserved bits set to 0
     packet->header.data_len = data_len; // Limit to 15 bytes
 
-
-    packet->header.checksum = ferm_get_checksum((const uint8_t *)data, data_len);
+    uint8_t temp_buf[32];  // Make sure this is large enough: header_size + data_len
+    temp_buf[0] = (flags << 3) | (ulp & 0x07); // Upper 5 bits for flags, lower 3 bits for ULP
+    temp_buf[1] = data_len & 0x0F; // Lower 4 bits for data length
+    int header_len = 2; // without the checksum byte
+    memcpy(&temp_buf[header_len], data, data_len);
+    packet->header.checksum = ferm_get_checksum(temp_buf, header_len + data_len);
 
     // Allocate memory for the data
     packet->data = malloc(packet->header.data_len);
@@ -127,4 +131,17 @@ size_t ferm_serialize_packet(const ferm_packet *packet, uint8_t *buffer, size_t 
     memcpy(&buffer[3], packet->data, packet->header.data_len);
 
     return 3 + packet->header.data_len;
+}
+
+int ferm_check_ack(const uint8_t *bufferRcvd, size_t index) {
+    int retVal = 0;
+    if (index >= 3) {  
+      uint8_t data_len = bufferRcvd[1] & 0x0F;  // Lower 4 bits of length byte
+      uint8_t total_len = 3 + data_len;     // Full packet = header + data
+      
+      // Read flags
+      uint8_t flags = ( bufferRcvd[0] & 0xF8 ) >> 3; // Upper 5 bits of control byte
+      retVal = (flags & PACKET_FLAG_ACK) != 0 ? 1 : 0;
+    }
+    return retVal;
 }

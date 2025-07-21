@@ -86,10 +86,10 @@ void setup() {
   ferm_set_flag(&flags, PACKET_FLAG_START);
   ferm_set_flag(&flags, PACKET_FLAG_FRAGMENT);
   ferm_packet_init(&packet, flags, ULP_UART, payload1, data_len);
-  size_t max_size = HEADER_SIZE + packet.header.data_len + 1; 
-  uint8_t *buffer = (uint8_t *)malloc(data_len + HEADER_SIZE);     
-  size_t num_bytes = ferm_serialize_packet(&packet, buffer, max_size); 
-  Serial.write(buffer, data_len + HEADER_SIZE);
+  size_t max_size = sizeof(ferm_header_t) + packet.header.data_len + 1; // +1 for optional data CRC
+  uint8_t *buffer = (uint8_t *)malloc(data_len + 3);      // Consider a fixed-size buffer pool or statically allocated buffers for robustness.
+  size_t num_bytes = ferm_serialize_packet(&packet, buffer, max_size); // Example serialization
+  Serial.write(buffer, data_len + 3);
   Serial.flush();
   free(buffer);
   
@@ -108,12 +108,16 @@ void setup() {
         delay(3000);
         digitalWrite(LED_BUILTIN, LOW);
         index = 0;
-        is_ack = false;
         break; 
-      } else if (index >= 18) { 
+      } else if (index >= 18) { // If we have read enough bytes, reset index
         Serial.println("No ACK received, resetting index");
         index = 0;
       }
+    }
+
+    if (is_ack) {
+      is_ack = false;
+      break;
     }
   }
   delay(1000);
@@ -123,10 +127,10 @@ void setup() {
   ferm_set_flag(&flags, PACKET_FLAG_FRAGMENT);
   ferm_set_flag(&flags, PACKET_FLAG_FINAL);
   ferm_packet_init(&packet, flags, ULP_UART, payload2, data_len);
-  max_size = HEADER_SIZE + packet.header.data_len + 1; 
-  buffer = (uint8_t *)malloc(data_len + HEADER_SIZE);      
-  num_bytes = ferm_serialize_packet(&packet, buffer, max_size); 
-  Serial.write(buffer, data_len + HEADER_SIZE);
+  max_size = sizeof(ferm_header_t) + packet.header.data_len + 1; // +1 for optional data CRC
+  buffer = (uint8_t *)malloc(data_len + 3);      // Consider a fixed-size buffer pool or statically allocated buffers for robustness.
+  num_bytes = ferm_serialize_packet(&packet, buffer, max_size); // Example serialization
+  Serial.write(buffer, data_len + 3);
   Serial.flush();
   free(buffer);
   index = 0;
@@ -136,6 +140,7 @@ void setup() {
     while (Serial.available()) {
       bufferRcvd[index++] = Serial.read();
     }
+
     if (index >= 3) {
       is_ack = ferm_check_ack(bufferRcvd, index);
       if (is_ack) {
@@ -143,12 +148,16 @@ void setup() {
         delay(3000);
         digitalWrite(LED_BUILTIN, LOW);
         index = 0;
-        is_ack = false;
         break; 
-      } else if (index >= 18) { // max packet size
+      } else if (index >= 18) { // If we have read enough bytes, reset index
         Serial.println("No ACK received, resetting index");
         index = 0;
       }
+    }
+
+    if (is_ack) {
+      is_ack = false;
+      break;
     }
   }
   delay(1000);
