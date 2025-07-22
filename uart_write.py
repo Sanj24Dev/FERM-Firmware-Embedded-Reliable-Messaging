@@ -76,10 +76,7 @@ def build_ferm_packet(flags: int, ulp: int, payload: bytes) -> bytes:
     if len(payload) > 15:
         raise ValueError("Payload too long. Max length is 15 bytes.")
 
-    # Control byte: flags (5 bits) + ULP (3 bits)
     control_byte = ((flags & 0x1F) << 3) | (ulp & 0x07)
-
-    # Length byte: payload length (4 bits) + reserved (4 bits set to 0)
     length_byte = (len(payload) & 0x0F)
 
     # Compute checksum over control + length + payload
@@ -99,46 +96,68 @@ def send_packet_over_uart(port, baudrate, packet: bytes):
 
 
 def main():
+    i = 1
     try:
         with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as ser:
-            print(f"Listening on {SERIAL_PORT} at {BAUD_RATE} baud...")
-            time.sleep(2)
+            while True: 
+                print(f"Opened {SERIAL_PORT} at {BAUD_RATE} baud...")
+                time.sleep(2)  # Give the serial port some time to initialize
 
-            while True:
-                if ser.in_waiting >= 3:
-                    header = ser.read(3)
-                    length = header[1] & 0x0F
-                    payload = ser.read(length)
-                    packet = header + payload
-                    if len(packet) == 3 + length:
-                        recvd_packet = parse_packet(packet)
-                        # Verify checksum
-                        to_checksum = bytes([packet[0], packet[1]]) + payload
+                # Step 1: Prepare and send data packet
+                data = bytes([1,2,3,4,5,6,7,8,9])
+                flags = PACKET_FLAG_START | PACKET_FLAG_FINAL
+                ulp = ULP_UART
+                packet = build_ferm_packet(flags, ulp, data)
+
+                print("Sending data packet " + str(i) + " ...")
+                ser.write(packet)
+                ser.flush()
+                print(f"Sent {len(packet)} bytes:", packet.hex())
+                debug_print = parse_packet(packet)
+
+                # Step 2: Wait for ACK response
+                start_time = time.time()
+                timeout_seconds = 5
+
+                while time.time() - start_time < timeout_seconds:
+                    if ser.in_waiting >= 3:
+                        header = ser.read(3)
+                        length = header[1] & 0x0F
+                        payload = ser.read(length)
+                        full_packet = header + payload
+
+                        if len(full_packet) != 3 + length:
+                            print("Incomplete ACK packet received")
+                            continue
+
+                        parsed = parse_packet(full_packet)
+
+                        # Step 3: Verify checksum
+                        to_checksum = bytes([full_packet[0], full_packet[1]]) + payload
                         computed_crc = crc8(to_checksum)
-                        recvd_checksum = recvd_packet["checksum"]
-                        if computed_crc != recvd_checksum:
-                            print(f"Checksum mismatch! Received: {recvd_checksum}, Computed: {computed_crc}")
 
+                        if computed_crc != parsed["checksum"]:
+                            print(f"Checksum mismatch: Received {parsed['checksum']}, Computed {computed_crc}")
+                            continue
+
+                        # Step 4: Check if ACK
+                        if parsed["is_ack"]:
+                            print("ACK received ✅")
+                            print("Payload in ACK:", list(parsed["payload"]))
+                            i = i+1
+                            break
                         else:
-                            print("Valid data received\n")
-                            data = bytes([random.randint(0, 255)])
-                            flags = PACKET_FLAG_ACK
-                            ulp = ULP_UART
-                            packet = build_ferm_packet(flags, ulp, data)
+                            print("Received packet is not an ACK ❌")
 
-                            # Send the packet
-                            try:
-                                ser.write(packet)
-                                print(f"Sent {len(packet)} bytes:", packet.hex())
-                            except serial.SerialException as e:
-                                print("Serial error:", e)
-
-
+                else:
+                    print("Timeout: No ACK received in 5 seconds ⏰")
 
     except serial.SerialException as e:
         print(f"Serial error: {e}")
     except KeyboardInterrupt:
         print("Exiting...")
+
+
 
 if __name__ == "__main__":
     main()
