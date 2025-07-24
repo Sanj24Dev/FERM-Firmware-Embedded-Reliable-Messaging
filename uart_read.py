@@ -96,6 +96,7 @@ def send_packet_over_uart(port, baudrate, packet: bytes):
 
 
 def main():
+    packets = 0
     try:
         with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as ser:
             print(f"Listening on {SERIAL_PORT} at {BAUD_RATE} baud...")
@@ -118,8 +119,12 @@ def main():
 
                         else:
                             print("Valid data received\n")
+                            packets += 1
+                            if packets >= 3:
+                                flags = PACKET_FLAG_ACK
+                            else:
+                                flags = 0
                             data = bytes([random.randint(0, 255)])
-                            flags = PACKET_FLAG_ACK
                             ulp = ULP_UART
                             packet = build_ferm_packet(flags, ulp, data)
 

@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 // CRC-8 polynomial: x^8 + x^2 + x + 1 = 0x07
 #define CRC8_POLY 0x07
 #define CRC8_INIT 0x00
@@ -90,10 +92,15 @@ void ferm_packet_print(const ferm_packet *packet);
 
 uint8_t ferm_get_checksum(const uint8_t *data, size_t len);
 void ferm_set_flag(uint8_t* flag, ferm_packet_flag to_set);
+void ferm_unset_flag(uint8_t* flag, ferm_packet_flag to_set);
 
 StatusCode ferm_serialize_packet(ferm_packet **packet, uint8_t *buffer, int num_packets);
 StatusCode ferm_get_packet(const uint8_t *bufferRcvd, size_t index, ferm_packet *packet);
 StatusCode ferm_create_ack_packet(ferm_packet *packet, uint8_t **buffer, upper_layer_protocol ulp);
+StatusCode ferm_create_nack_packet(ferm_packet *packet, uint8_t **buffer, upper_layer_protocol ulp);
 int ferm_check_ack(const ferm_packet packet);
 int ferm_get_packet_len(const uint8_t *bufferRcvd);
 
+#ifdef __cplusplus
+}
+#endif

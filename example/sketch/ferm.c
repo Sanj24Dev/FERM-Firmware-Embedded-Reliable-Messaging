@@ -93,6 +93,10 @@ void ferm_set_flag(uint8_t* flag, ferm_packet_flag to_set) {
     *flag |= to_set; 
 }
 
+void ferm_unset_flag(uint8_t* flag, ferm_packet_flag to_set) {
+    *flag &= ~to_set; 
+}
+
 void ferm_packet_print(const ferm_packet *packet) {
     if (packet == NULL) {
         return; // Invalid packet
@@ -216,6 +220,17 @@ StatusCode ferm_get_packet(const uint8_t *bufferRcvd, size_t index, ferm_packet 
 StatusCode ferm_create_ack_packet(ferm_packet *packet, uint8_t **buffer, upper_layer_protocol ulp) {
     uint8_t flags = 0;
     ferm_set_flag(&flags, PACKET_FLAG_ACK);
+    unsigned char data = (unsigned char)(rand() % 256);
+    StatusCode status = ferm_packet_init(&packet, buffer, flags, ulp, &data, 1, NULL);
+    if (status != STATUS_SUCCESS) {
+        return status; 
+    }
+    return STATUS_SUCCESS;
+}
+
+StatusCode ferm_create_nack_packet(ferm_packet *packet, uint8_t **buffer, upper_layer_protocol ulp) {
+    uint8_t flags = 0;
+    ferm_unset_flag(&flags, PACKET_FLAG_ACK);
     unsigned char data = (unsigned char)(rand() % 256);
     StatusCode status = ferm_packet_init(&packet, buffer, flags, ulp, &data, 1, NULL);
     if (status != STATUS_SUCCESS) {

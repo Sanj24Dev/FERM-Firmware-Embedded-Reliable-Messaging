@@ -29,26 +29,45 @@ void loop() {
 
     if (packet_len != -1 && index >= packet_len) {
       ferm_packet recvd_packet;
-      StatusCode status = ferm_get_packet(bufferRcvd, index, &recvd_packet);
-      if (status != STATUS_SUCCESS) {
-        Serial.println("Failed to get packet");
-        index = 0;
-        packet_len = -1;
-        continue;
-      }
-
-      // send ack
-      ferm_packet ack;
+      ferm_packet reply;
       uint8_t *buffer;
-      status = ferm_create_ack_packet(&ack, &buffer, ULP_UART);
-      if (status != STATUS_SUCCESS) {
-        Serial.println("Failed to create ACK packet");
+      StatusCode status = ferm_get_packet(bufferRcvd, index, &recvd_packet);
+      if (status == STATUS_SUCCESS)  {
+        status = ferm_create_ack_packet(&reply, &buffer, ULP_UART);
+        digitalWrite(LED_BUILTIN, HIGH);
+        delay(200);
+        digitalWrite(LED_BUILTIN, LOW);
+        delay(200);
+        if (status != STATUS_SUCCESS) {
+          Serial.println("Failed to create ACK packet");
+          index = 0;
+          packet_len = -1;
+          Serial.flush();
+          continue;
+        }
+      }
+      else if (status == STATUS_ERROR_CHECKSUM_MISMATCH){
+        status = ferm_create_nack_packet(&reply, &buffer, ULP_UART);
+        if (status != STATUS_SUCCESS) {
+          Serial.println("Failed to create NACK packet");
+          index = 0;
+          packet_len = -1;
+          Serial.flush();
+          continue;
+        }
         index = 0;
         packet_len = -1;
+        Serial.flush();
+        continue;
+      }
+      else {
+        index = 0;
+        packet_len = -1;
+        Serial.flush();
         continue;
       }
 
-      Serial.write(buffer, ack.header.data_len + HEADER_SIZE);
+      Serial.write(buffer, reply.header.data_len + HEADER_SIZE);
       Serial.flush();
       free(buffer);
 

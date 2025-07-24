@@ -49,16 +49,16 @@ def parse_packet(buffer):
     data_len = length_byte & 0x0F
     
 
-    print("Parsed Packet:")
-    print(f"  is_sof       : {is_sof}")
-    print(f"  is_ack       : {is_ack}")
-    print(f"  is_fragment  : {is_fragment}")
-    print(f"  is_final     : {is_final}")
-    print(f"  is_retransmit: {is_retransmit}")
-    print(f"  ULP field    : {ulp}")
-    print(f"  Data Length  : {data_len}")
-    print(f"  Checksum     : {checksum}")
-    print("  Payload      :", [int(b) for b in payload])
+    # print("Parsed Packet:")
+    # print(f"  is_sof       : {is_sof}")
+    # print(f"  is_ack       : {is_ack}")
+    # print(f"  is_fragment  : {is_fragment}")
+    # print(f"  is_final     : {is_final}")
+    # print(f"  is_retransmit: {is_retransmit}")
+    # print(f"  ULP field    : {ulp}")
+    # print(f"  Data Length  : {data_len}")
+    # print(f"  Checksum     : {checksum}")
+    # print("  Payload      :", [int(b) for b in payload])
 
     return {
         "is_sof": is_sof,
@@ -113,7 +113,6 @@ def main():
                 ser.write(packet)
                 ser.flush()
                 print(f"Sent {len(packet)} bytes:", packet.hex())
-                debug_print = parse_packet(packet)
 
                 # Step 2: Wait for ACK response
                 start_time = time.time()
@@ -137,20 +136,21 @@ def main():
                         computed_crc = crc8(to_checksum)
 
                         if computed_crc != parsed["checksum"]:
-                            print(f"Checksum mismatch: Received {parsed['checksum']}, Computed {computed_crc}")
-                            continue
+                            # print(f"Checksum mismatch: Received {parsed['checksum']}, Computed {computed_crc}")
+                            print("❌ Corrupt reply recieved, retransmit")
+                            break
 
                         # Step 4: Check if ACK
                         if parsed["is_ack"]:
-                            print("ACK received ✅")
-                            print("Payload in ACK:", list(parsed["payload"]))
+                            print("✅ ACK received")
                             i = i+1
-                            break
                         else:
-                            print("Received packet is not an ACK ❌")
+                            print("❌ NACK received, retransmit")
+                        break
 
                 else:
-                    print("Timeout: No ACK received in 5 seconds ⏰")
+                    print("Timeout: No packets received in 5 seconds ⏰")
+                # time.sleep(2)
 
     except serial.SerialException as e:
         print(f"Serial error: {e}")
